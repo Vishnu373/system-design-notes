@@ -11,3 +11,4 @@ My personal cheatsheet of system design notes, kept as a public repo.
 
 - **_Designing Data-Intensive Applications_** by Martin Kleppmann — the primary source these notes draw from.
 - AI (Claude) was used to simplify and elaborate on certain concepts.
+- Youtube
