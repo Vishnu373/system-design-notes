@@ -1,36 +1,36 @@
 # Common Patterns
 
-## Case 1: Scale reads
+## Scale reads
 
-- **Caching** — store frequently read data in memory so you skip the DB entirely. Fast, but data can be stale.
-- **Read replicas** — copies of the DB that handle read traffic, offloading the primary DB which focuses on writes.
-- **Indexing** — pre-computed lookup structures on the DB so queries find data faster without scanning every row (just like the index of a book).
+- **Caching** — serve hot data from memory, skip the DB. Fast; data can be stale.
+- **Read replicas** — DB copies that absorb read traffic; primary focuses on writes.
+- **Indexing** — pre-built lookup structures so queries find rows without a full scan (like a book index).
 
-## Case 2: Scale writes
+## Scale writes
 
-- **Sharding** — split data across multiple DB nodes by a shard key (e.g., `user_id`). Each node handles writes for its own slice of data, distributing the load.
-- **Batching** — group multiple writes together and send them in one operation instead of one by one. Reduces overhead (like the memtable in LSM trees).
-- **Asynchronous writes** — return success to the client immediately and persist to the DB in the background. Lower latency, but with a risk of data loss on crash.
+- **Sharding** — split data across DB nodes by a shard key (e.g. `user_id`); each node owns its slice.
+- **Batching** — group multiple writes into one operation to reduce per-write overhead.
+- **Async writes** — ack the client immediately; persist to DB in the background. Lower latency, risk of data loss on crash.
 
-## Case 3: Real-time data
+## Real-time data
 
-- **WebSockets** — full-duplex, persistent connection between client and server. Both can send messages at any time. Best for chat and live collaboration.
-- **Server-Sent Events (SSE)** — server pushes updates to the client over a single long-lived HTTP connection. One direction only (server → client). Best for live feeds and streaming responses.
-- **Long polling** — client sends a request, server holds it open until data is ready, then responds. Client immediately opens the next request. Simulates push over regular HTTP.
+- **WebSockets** — persistent, full-duplex connection; both sides can send at any time. Best for chat, live collaboration.
+- **SSE (Server-Sent Events)** — server pushes updates over a single long-lived HTTP connection (one direction: server → client). Best for live feeds, streaming responses.
+- **Long polling** — client requests, server holds it open until data is ready, then responds. Client immediately re-requests. Simulates push over plain HTTP.
 
-## Case 4: Long-running processes
+## Long-running processes
 
-- **Message queues** — offload work to a queue (e.g., Kafka, SQS) so the client gets an immediate response while the task is processed asynchronously in the background.
-- **Worker pools** — a fixed set of workers pick up tasks from the queue and process them concurrently, preventing resource exhaustion from unlimited parallel execution.
-- **Workflow engines** — orchestrate multi-step processes with dependencies, retries, and state tracking (e.g., Temporal, AWS Step Functions). Best when steps depend on each other's output.
+- **Message queues** (Kafka, SQS) — offload work so the client gets an immediate ack; task runs async.
+- **Worker pools** — fixed set of workers drain the queue concurrently, preventing resource exhaustion.
+- **Workflow engines** (Temporal, AWS Step Functions) — orchestrate multi-step jobs with retries, dependencies, and state tracking.
 
-## Case 5: Failures and reliability
+## Failures & reliability
 
-- **Retries** — automatically retry a failed request after a delay. Limit to 2–3 retries max; beyond that it's likely a deeper issue. Use **exponential backoff** (wait longer after each failure: 1s → 2s → 4s → 8s) to avoid hammering a struggling service.
-- **Idempotency** — designing operations so that retrying them multiple times produces the same result as doing it once. Prevents duplicate charges, duplicate records, etc.
-- **Self-healing** — system automatically detects and recovers from failures (e.g., restarting crashed containers, rerouting traffic away from unhealthy nodes).
-- **Circuit breakers** — if a downstream service keeps failing, stop sending requests to it for a period instead of endlessly retrying. Prevents cascading failures.
+- **Retries** — retry on failure; cap at 2–3 attempts. Use **exponential backoff** (1s → 2s → 4s) to avoid hammering a struggling service.
+- **Idempotency** — retrying an operation N times produces the same result as doing it once. Prevents duplicate charges, duplicate records.
+- **Self-healing** — system auto-recovers: restarts crashed containers, reroutes traffic away from unhealthy nodes.
+- **Circuit breaker** — if a downstream service keeps failing, stop sending requests to it for a cooling-off period. Prevents cascading failures.
 
-## Case 6: Separate reads/writes
+## Separate reads / writes
 
-- **CQRS (Command Query Responsibility Segregation)** — split read and write operations into separate models. Writes (commands) update the DB; reads (queries) use a separate optimized read model (e.g., a cache or read replica). Prevents read and write workloads from competing for the same resources.
+- **CQRS (Command Query Responsibility Segregation)** — writes go to the write model (DB), reads go to a separate optimized read model (cache, replica). Prevents both workloads from fighting over the same resources.

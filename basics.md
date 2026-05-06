@@ -4,9 +4,9 @@
 
 Continuing to work correctly, even when things go wrong.
 
-- A **fault** is one component of the system deviating from its spec.
-- A **failure** is when the system as a whole stops providing the required service to the user.
-- Systems that anticipate faults and can cope with them are called **fault-tolerant** or **resilient**.
+- **Fault** — one component deviates from its spec.
+- **Failure** — the whole system stops serving the user.
+- **Fault-tolerant / resilient** — system anticipates faults and copes with them.
 
 ---
 
@@ -14,65 +14,74 @@ Continuing to work correctly, even when things go wrong.
 
 A system's ability to cope with increased load.
 
-### 1. Describing load
+### Describing load
 
-"How busy is your system, and in what way?" — measured in numbers.
+Pick the number that captures how "busy" your system is:
 
-**Examples:**
-- Netflix: How many people are streaming simultaneously right now?
-- WhatsApp: How many messages are being sent per second?
-- Amazon: How many product page views per second during Black Friday?
-
-Load parameters vary by system — pick the ones that matter most for yours:
-
-| System     | Relevant load parameter |
+| System     | Load parameter          |
 | ---------- | ----------------------- |
 | Web server | Requests per second     |
 | Database   | Read/write ratio        |
 | Cache      | Hit rate                |
 | Chat app   | Concurrent active users |
 
-### 2. Describing performance
+### Describing performance
 
-When you increase the load:
-- With current system resources (CPU, memory, network bandwidth etc.), is performance stable?
-- How much do you need to increase resources to keep performance stable?
+- **Throughput** — how much work done per unit time (e.g. 10k queries/sec).
+- **Latency** — delay between sending a request and getting the first byte back.
+- **Response time** — total wait the client feels: latency + network + queue + processing.
 
-**Throughput** — how much work a system can do in a given time period.
-> A database processing 10,000 queries/sec has higher throughput than one processing 1,000/sec.
+### Measuring response time — use percentiles, not averages
 
-**Latency** — how long it takes for a single request to be processed (delay between sending a request and getting a response).
-> You click a button → it takes 200ms to load the result. That 200ms is the latency.
+Sort all response times fastest → slowest:
 
-**Response time** — the total time the client experiences waiting for a response. Includes latency plus network delays, queuing time, and processing time.
+| Percentile | Meaning                            |
+| ---------- | ---------------------------------- |
+| p50        | Median — half of requests faster   |
+| p95        | 95% of requests faster than this   |
+| p99        | 99% of requests faster than this   |
+| p999       | 99.9% of requests faster than this |
 
-> Latency is a component of response time, but response time is what the user actually feels.
+Higher percentile = measuring your slowest (worst) users.
 
-### Measuring response time
+**Amazon uses p999** — their slowest users tend to be their most valuable (frequent buyers). A 100ms slowdown = 1% sales drop. Don't optimize p9999 — those are random noise (GC pauses, network blips) and cost too much to fix.
 
-Percentiles are a better measure than averages.
+**SLOs / SLAs** — percentiles appear in contracts. SLO = internal target, SLA = external commitment (breach = refund).
 
-Sort response times fastest to slowest:
+### Coping with load
 
-| Percentile | What it means                              |
-| ---------- | ------------------------------------------ |
-| p50        | Half of requests are faster than this      |
-| p95        | 95% of requests are faster than this       |
-| p99        | 99% of requests are faster than this       |
-| p999       | 99.9% of requests are faster than this     |
+**Vertical scaling (scale up)** — move to a more powerful machine.
+- e.g. upgrading from an Apple M1 to an M4 chip.
 
-The higher the percentile, the more you're measuring extreme slow requests (outliers).
+**Horizontal scaling (scale out)** — distribute load across multiple smaller machines. Also called **shared-nothing architecture**.
+- e.g. running your service across 3 M1 machines instead of one M4.
 
-**Why outliers matter — Amazon's example:**
-- Amazon measures internal services at **p999** (1 in 1,000 requests).
-- Their slowest users are often their most valuable customers (frequent buyers).
-- A 100ms slowdown = 1% drop in sales.
-- A 1 second slowdown = 16% drop in customer satisfaction.
+**Elastic systems (auto-scaling)** — automatically add resources when load increases. Best for unpredictable or spiky traffic.
 
-> A small number of slow requests can directly hurt your most valuable users and your revenue.
+**Manual scaling** — a human analyzes the load and provisions resources. Simpler but slower to react.
 
-**Why not optimize p9999?**
-- Those extreme slow requests are often caused by random, uncontrollable events (network blips, GC pauses).
-- The engineering effort to fix them outweighs the benefit.
+> In practice, most systems combine both: scale up to a reasonable single-machine limit, then scale out beyond that.
 
-Amazon chose **p999 as the sweet spot**.
+---
+
+## Maintainability
+
+Making life easier for the people who operate and extend the system over time.
+
+### Operability
+
+Making routine operations easy so the team can focus on high-value work instead of firefighting.
+
+- **Health monitoring** — dashboards and alerts that show whether the system is healthy (e.g. Grafana, Datadog).
+- **Quick recovery** — runbooks and automated restarts so a crashed service is back up in seconds, not hours (e.g. Kubernetes auto-restarts failed pods).
+- **Root cause tracking** — structured logs and distributed tracing so you can pinpoint *why* something failed (e.g. Datadog APM, OpenTelemetry).
+- **Automation & standard tooling** — CI/CD pipelines, infrastructure-as-code (Terraform, Ansible) so changes are repeatable and auditable, not manual and fragile.
+- **Good documentation** — runbooks, architecture diagrams, and on-call guides so anyone can operate the system, not just its original author.
+
+### Simplicity
+
+Managing complexity — not reducing functionality.
+
+**Abstraction** — implement the complexity once and hide it behind a clean interface.
+- e.g. programming languages abstract away binary machine code; you write `x + y`, not CPU instructions.
+- e.g. an SDK abstracts away raw HTTP calls to an API.
